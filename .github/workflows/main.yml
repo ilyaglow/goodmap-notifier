@@ -15,26 +15,19 @@ jobs:
       ALLOWED_MAPS: "de_train,de_nuke,de_inferno,de_cbble,de_cpl_mill,de_mirage,de_tuscan,de_aztec"
       # Comma-separated list of servers in the format "name;IP;PORT"
       SERVERS: ${{ vars.SERVERS }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to use 'gh' CLI
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Restore server maps cache
-        uses: actions/cache@v4
-        with:
-          # Restore the "cache" folder which holds the last-known maps
-          path: cache
-          key: server-map-cache
 
       - name: Install dependencies
         run: |
           sudo curl -sfLo /usr/bin/a2s-cli https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-cli-linux-amd64
           sudo chmod +x /usr/bin/a2s-cli
+          gh auth setup-git
 
       - name: Check server maps and send notifications if changed
         run: |
-          mkdir -p cache
-
           # Convert comma-separated SERVERS into an array
           IFS=',' read -ra SERVER_LIST <<< "$SERVERS"
           for SERVER in "${SERVER_LIST[@]}"; do
@@ -51,14 +44,11 @@ jobs:
             echo "Current map: $CURRENT_MAP"
             echo "Players: $PLAYERS"
             
-            CACHE_FILE="cache/cache_${NAME}.txt"
-            PREVIOUS_MAP=""
-            if [ -f "$CACHE_FILE" ]; then
-              PREVIOUS_MAP=$(cat "$CACHE_FILE")
-            fi
-            
-            # Save the current map for future reference
-            echo "$CURRENT_MAP" > "$CACHE_FILE"
+            # Get previous map using GitHub CLI
+            PREVIOUS_MAP=$(gh variable get "MAP_${NAME}" --repo ${{ github.repository }} || echo "")
+
+            # Store current map in GitHub Actions variables
+            gh variable set "MAP_${NAME}" --body "$CURRENT_MAP" --repo ${{ github.repository }}            
             
             # Check allowed maps by looping over each allowed map pattern
             MATCHED=0
@@ -70,7 +60,7 @@ jobs:
             done
             
             if [ $MATCHED -eq 1 ]; then
-              if [ "$CURRENT_MAP" != "$PREVIOUS_MAP" ]; then
+              if [[ -n "$PREVIOUS_MAP" && "$CURRENT_MAP" != "$PREVIOUS_MAP" ]]; then
                 MESSAGE="Server $NAME changed to map: $CURRENT_MAP ($PLAYERS)"
                 echo "Sending notification: $MESSAGE"
                 curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
@@ -83,9 +73,3 @@ jobs:
               echo "Map $CURRENT_MAP is not in allowed list. No notification sent."
             fi
           done
-
-      - name: Save server maps cache
-        uses: actions/cache@v4
-        with:
-          path: cache
-          key: server-map-cache
