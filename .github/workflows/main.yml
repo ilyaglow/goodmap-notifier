@@ -14,7 +14,7 @@ jobs:
       # Comma-separated list of allowed map names (without numeric suffix)
       ALLOWED_MAPS: "de_train,de_nuke,de_inferno,de_cbble,de_cpl_mill,de_mirage,de_tuscan,de_aztec"
       # Comma-separated list of servers in the format "name;IP;PORT"
-      SERVERS: ${{ secrets.SERVERS }}
+      SERVERS: ${{ env.SERVERS }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -43,12 +43,11 @@ jobs:
             # Split each server definition into name, IP, and PORT
             IFS=';' read -ra FIELDS <<< "$SERVER"
             NAME="${FIELDS[0]}"
-            IP="${FIELDS[1]}"
-            PORT="${FIELDS[2]}"
+            IPPORT="${FIELDS[1]}"
             
             echo "Checking server: $NAME at $IP:$PORT"
             # Retrieve current map info using a2s-cli and extract the 'map' value with jq
-            CURRENT_MAP=$(a2s-cli -j info "$IP" "$PORT" | jq -r '.map')
+            CURRENT_MAP=$(a2s-cli -j info "$IPPORT" | jq -r '.map')
             echo "Current map: $CURRENT_MAP"
             
             CACHE_FILE="cache/cache_${NAME}.txt"
