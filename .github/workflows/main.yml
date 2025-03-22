@@ -28,10 +28,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl
-          curl -sfLo /usr/bin/a2s-cli https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-cli-linux-amd64
-          chmod +x /usr/bin/a2s-cli
+          sudo curl -sfLo /usr/bin/a2s-cli https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-cli-linux-amd64
+          sudo chmod +x /usr/bin/a2s-cli
 
       - name: Check server maps and send notifications if changed
         run: |
