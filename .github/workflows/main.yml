@@ -1,0 +1,91 @@
+name: Server Map Checker
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # Trigger every 5 minutes
+  workflow_dispatch: {}       # Allow manual trigger
+
+jobs:
+  check-map:
+    runs-on: ubuntu-latest
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      # Comma-separated list of allowed map names (without numeric suffix)
+      ALLOWED_MAPS: "de_train,de_nuke,de_inferno,de_cbble,de_cpl_mill,de_mirage,de_tuscan,de_aztec"
+      # Comma-separated list of servers in the format "name;IP;PORT"
+      SERVERS: ${{ secrets.SERVERS }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Restore server maps cache
+        uses: actions/cache@v4
+        with:
+          # Restore the "cache" folder which holds the last-known maps
+          path: cache
+          key: server-map-cache
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+          curl -sfLo /usr/bin/a2s-cli https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-cli-linux-amd64
+          chmod +x /usr/bin/a2s-cli
+
+      - name: Check server maps and send notifications if changed
+        run: |
+          mkdir -p cache
+
+          # Convert comma-separated SERVERS into an array
+          IFS=',' read -ra SERVER_LIST <<< "$SERVERS"
+          for SERVER in "${SERVER_LIST[@]}"; do
+            # Split each server definition into name, IP, and PORT
+            IFS=';' read -ra FIELDS <<< "$SERVER"
+            NAME="${FIELDS[0]}"
+            IP="${FIELDS[1]}"
+            PORT="${FIELDS[2]}"
+            
+            echo "Checking server: $NAME at $IP:$PORT"
+            # Retrieve current map info using a2s-cli and extract the 'map' value with jq
+            CURRENT_MAP=$(a2s-cli -j info "$IP" "$PORT" | jq -r '.map')
+            echo "Current map: $CURRENT_MAP"
+            
+            CACHE_FILE="cache/cache_${NAME}.txt"
+            PREVIOUS_MAP=""
+            if [ -f "$CACHE_FILE" ]; then
+              PREVIOUS_MAP=$(cat "$CACHE_FILE")
+            fi
+            
+            # Save the current map for future reference
+            echo "$CURRENT_MAP" > "$CACHE_FILE"
+            
+            # Check allowed maps by looping over each allowed map pattern
+            MATCHED=0
+            for ALLOWED in $(echo "$ALLOWED_MAPS" | tr ',' '\n'); do
+              if echo "$CURRENT_MAP" | grep -q "$ALLOWED"; then
+                MATCHED=1
+                break
+              fi
+            done
+            
+            if [ $MATCHED -eq 1 ]; then
+              if [ "$CURRENT_MAP" != "$PREVIOUS_MAP" ]; then
+                MESSAGE="Server $NAME changed to map: $CURRENT_MAP"
+                echo "Sending notification: $MESSAGE"
+                curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                     -d chat_id="${TELEGRAM_CHAT_ID}" \
+                     -d text="$MESSAGE"
+              else
+                echo "Map unchanged. No notification sent."
+              fi
+            else
+              echo "Map $CURRENT_MAP is not in allowed list. No notification sent."
+            fi
+          done
+
+      - name: Save server maps cache
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: server-map-cache
