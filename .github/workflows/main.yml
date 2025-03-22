@@ -45,8 +45,11 @@ jobs:
             
             echo "Checking server: $NAME at $IP:$PORT"
             # Retrieve current map info using a2s-cli and extract the 'map' value with jq
-            CURRENT_MAP=$(a2s-cli -j info "$IPPORT" | jq -r '.map')
+            JSON_OUTPUT=$(a2s-cli -j info "$IPPORT")
+            CURRENT_MAP=$(echo "$JSON_OUTPUT" | jq -r '.map')
+            PLAYERS=$(echo "$JSON_OUTPUT" | jq -r '"\(.players)/\(.max_players)"')
             echo "Current map: $CURRENT_MAP"
+            echo "Players: $PLAYERS"
             
             CACHE_FILE="cache/cache_${NAME}.txt"
             PREVIOUS_MAP=""
@@ -68,7 +71,7 @@ jobs:
             
             if [ $MATCHED -eq 1 ]; then
               if [ "$CURRENT_MAP" != "$PREVIOUS_MAP" ]; then
-                MESSAGE="Server $NAME changed to map: $CURRENT_MAP"
+                MESSAGE="Server $NAME changed to map: $CURRENT_MAP ($PLAYERS)"
                 echo "Sending notification: $MESSAGE"
                 curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
                      -d chat_id="${TELEGRAM_CHAT_ID}" \
