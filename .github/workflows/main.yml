@@ -15,7 +15,7 @@ jobs:
       ALLOWED_MAPS: "de_train,de_nuke,de_inferno,de_cbble,de_cpl_mill,de_mirage,de_tuscan,de_aztec"
       # Comma-separated list of servers in the format "name;IP;PORT"
       SERVERS: ${{ vars.SERVERS }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to use 'gh' CLI
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}  # Needed to use 'gh' CLI
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
