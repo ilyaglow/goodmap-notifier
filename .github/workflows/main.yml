@@ -36,7 +36,7 @@ jobs:
             NAME="${FIELDS[0]}"
             IPPORT="${FIELDS[1]}"
             
-            echo "Checking server: $NAME at $IP:$PORT"
+            echo "Checking server: $NAME at $IPPORT"
             # Retrieve current map info using a2s-cli and extract the 'map' value with jq
             JSON_OUTPUT=$(a2s-cli -j info "$IPPORT")
             CURRENT_MAP=$(echo "$JSON_OUTPUT" | jq -r '.map')
