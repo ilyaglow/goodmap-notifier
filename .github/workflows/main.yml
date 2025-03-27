@@ -2,8 +2,8 @@ name: Server Map Checker
 
 on:
   schedule:
-    - cron: '*/5 17-22 * * 1-5'   # Trigger every 5 minutes on week days
-    - cron: '*/5 10-22 * * 0,6'   # Trigger every 5 minutes on weekends
+    - cron: '*/5 16-22 * * 1-5'   # Trigger every 5 minutes on week days
+    - cron: '*/5 9-22 * * 0,6'   # Trigger every 5 minutes on weekends
   workflow_dispatch: {}       # Allow manual trigger
 
 jobs:
